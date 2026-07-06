@@ -201,6 +201,84 @@ def test_anthropic_rate_limit_error_is_retried_then_raises(
     )
 
 
+def test_anthropic_invoke_strips_internal_message_markers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_fake_anthropic(monkeypatch)
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "test-key")
+
+    captured: dict[str, Any] = {}
+
+    def capture_create(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return types.SimpleNamespace(
+            content=[types.SimpleNamespace(type="text", text="ok")],
+            usage=types.SimpleNamespace(input_tokens=1, output_tokens=1),
+        )
+
+    client = AnthropicAgentClient(model="claude-sonnet-4-6")
+    client._client = types.SimpleNamespace(messages=types.SimpleNamespace(create=capture_create))
+
+    messages = [
+        {"role": "user", "content": "alert"},
+        {
+            "role": "assistant",
+            "content": [{"type": "tool_use", "id": "seed", "name": "n", "input": {}}],
+            "_opensre_seed": True,
+        },
+    ]
+    client.invoke(messages=messages)
+
+    api_messages = captured["messages"]
+    assert api_messages[1] == {
+        "role": "assistant",
+        "content": [{"type": "tool_use", "id": "seed", "name": "n", "input": {}}],
+    }
+    assert messages[1]["_opensre_seed"] is True
+
+
+def test_openai_agent_client_invoke_strips_internal_message_markers(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _install_fake_openai(monkeypatch)
+
+    captured: dict[str, Any] = {}
+
+    def capture_create(**kwargs: object) -> object:
+        captured.update(kwargs)
+        return _make_fake_openai_response(content="ok")
+
+    client = OpenAIAgentClient.__new__(OpenAIAgentClient)
+    client._client = types.SimpleNamespace(
+        chat=types.SimpleNamespace(completions=types.SimpleNamespace(create=capture_create))
+    )
+    client._model = "gpt-4o"
+    client._max_tokens = 1024
+
+    messages = [
+        {"role": "user", "content": "alert"},
+        {
+            "role": "assistant",
+            "content": "",
+            "tool_calls": [
+                {"id": "seed", "type": "function", "function": {"name": "n", "arguments": "{}"}},
+            ],
+            "_opensre_seed": True,
+        },
+    ]
+    client.invoke(messages=messages)
+
+    api_messages = captured["messages"]
+    assert api_messages[1] == {
+        "role": "assistant",
+        "content": "",
+        "tool_calls": [
+            {"id": "seed", "type": "function", "function": {"name": "n", "arguments": "{}"}},
+        ],
+    }
+    assert messages[1]["_opensre_seed"] is True
+
+
 def test_anthropic_credit_balance_too_low_raises_LLMCreditExhaustedError(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
