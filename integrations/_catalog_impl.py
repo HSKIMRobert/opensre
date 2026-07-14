@@ -89,6 +89,7 @@ from integrations.redis import classify as _classify_redis
 from integrations.redis import redis_config_from_env
 from integrations.registry import (
     DIRECT_CLASSIFIED_EFFECTIVE_SERVICES,
+    INTEGRATION_SPECS_BY_SERVICE,
     SKIP_CLASSIFIED_SERVICES,
     family_key,
     service_key,
@@ -1550,6 +1551,13 @@ def _publish_classified_effective_service(
 ) -> None:
     """Copy a directly classified service into the effective view."""
     resolved_integration = classified_integrations.get(service)
+    if resolved_integration is None:
+        spec = INTEGRATION_SPECS_BY_SERVICE.get(service)
+        if spec is not None:
+            for member in spec.family_members:
+                resolved_integration = classified_integrations.get(member)
+                if resolved_integration is not None:
+                    break
     config_dict = _config_as_dict(resolved_integration)
     if config_dict is None:
         return
