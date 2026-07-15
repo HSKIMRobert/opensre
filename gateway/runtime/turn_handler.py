@@ -115,9 +115,14 @@ class GatewayTurnHandler:
         """
         error_reporter = DefaultErrorReporter(logger)
         observer = _ToolStatusObserver(sink)
+        # Transport sinks may carry per-turn tool-execution hooks (the Slack
+        # sink attaches the Block Kit approval gate); sinks without the
+        # attribute (Telegram) run unhooked as before.
+        tool_hooks = getattr(sink, "tool_hooks", None)
         return HeadlessAgent(
             session=session,
             output=sink,
+            tool_hooks=tool_hooks,
             tools=DefaultToolProvider(
                 session,
                 self._console,
@@ -126,7 +131,7 @@ class GatewayTurnHandler:
                 subprocess_presenter_factory=headless_subprocess_presenter_factory,
                 slash_ports_factory=self._slash_ports_factory,
             ),
-            prompts=DefaultPromptContextProvider(session),
+            prompts=DefaultPromptContextProvider(session, surface="gateway"),
             reasoning=DefaultReasoningClientProvider(
                 output=sink,
                 error_reporter=error_reporter,

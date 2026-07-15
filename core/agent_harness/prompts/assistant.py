@@ -29,6 +29,10 @@ _MAX_SYNTHETIC_OBSERVATION_PROMPT_CHARS = 120_000
 class AssistantPromptContextProvider(Protocol):
     """Grounding provider used by the surface-agnostic assistant turn."""
 
+    def surface(self) -> str:
+        """Which surface this turn runs on; defaults to the interactive shell."""
+        return "interactive_shell"
+
     def cli_reference(self) -> str:
         raise NotImplementedError
 
@@ -60,6 +64,7 @@ def build_assistant_system_prompt(
     prior_investigation: str = "",
     prior_action_facts: str = "",
     environment: str = "",
+    surface: str = "interactive_shell",
 ) -> str:
     """Build the system prompt for one assistant turn."""
     return _build_system_prompt(
@@ -71,6 +76,7 @@ def build_assistant_system_prompt(
         prior_investigation=prior_investigation,
         prior_action_facts=prior_action_facts,
         environment=environment,
+        surface=surface,
     )
 
 
@@ -238,6 +244,7 @@ def build_cli_agent_prompt_from_provider(
         ),
         prior_action_facts=format_prior_action_facts(list(turn_snapshot.conversation_messages)),
         environment=prompts.environment_block(),
+        surface=prompts.surface(),
     )
     return (
         f"{system}\n"
