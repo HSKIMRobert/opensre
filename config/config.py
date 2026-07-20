@@ -13,6 +13,10 @@ from typing import Literal
 
 from pydantic import Field, ValidationError, field_validator, model_validator
 
+from config.constants.llm import (
+    AZURE_OPENAI_API_VERSION_ENV,
+    AZURE_OPENAI_BASE_URL_ENV,
+)
 from config.llm_auth.auth_method import (
     LLM_AUTH_METHOD_ENV,
     effective_llm_provider,
@@ -357,9 +361,9 @@ def _llm_settings_env_payload(provider: str) -> dict[str, object]:
             os.getenv("GROQ_MODEL", GROQ_TOOLCALL_MODEL),
         ).strip()
         or GROQ_TOOLCALL_MODEL,
-        "azure_openai_base_url": os.getenv("AZURE_OPENAI_BASE_URL", "").strip(),
+        "azure_openai_base_url": os.getenv(AZURE_OPENAI_BASE_URL_ENV, "").strip(),
         "azure_openai_api_version": os.getenv(
-            "AZURE_OPENAI_API_VERSION", DEFAULT_AZURE_OPENAI_API_VERSION
+            AZURE_OPENAI_API_VERSION_ENV, DEFAULT_AZURE_OPENAI_API_VERSION
         ).strip()
         or DEFAULT_AZURE_OPENAI_API_VERSION,
         "azure_openai_reasoning_model": os.getenv(

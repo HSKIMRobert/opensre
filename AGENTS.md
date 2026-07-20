@@ -13,6 +13,14 @@
 - Use named constants for HTTP status codes (`http.HTTPStatus`, e.g.
   `HTTPStatus.PAYMENT_REQUIRED`) in both source and tests — never hardcoded
   numeric literals like `402`.
+- Env-var names and shared static constants live under `config/`, never inline
+  in a feature module or duplicated across files. Put them in a domain module
+  under `config/constants/` (e.g. `config/constants/billing.py`,
+  `config/constants/llm.py`) — a leaf that any layer can import without a cycle —
+  and re-export via `config/constants/__init__.py`. Do **not** define shared env
+  names in `config/config.py`: it imports `config.llm_auth.*`, so a name it and
+  one of those modules both need would force a cyclic import. Only a name used
+  solely inside `config/config.py` (nothing it imports needs it) may live there.
 - Do not keep compatibility-only forwarding modules after refactors. Once imports and tests
   are migrated, remove the old module path in the same change and use one canonical import path.
 
