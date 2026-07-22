@@ -30,6 +30,7 @@ from platform.terminal.theme import (
 
 if TYPE_CHECKING:
     from integrations.github.mcp import GitHubMcpDisplayDetailLevel
+    from integrations.setup_flow import IntegrationSetupSpec
 
 from integrations.gitlab import DEFAULT_GITLAB_BASE_URL
 from integrations.openclaw import build_openclaw_config, validate_openclaw_config
@@ -868,29 +869,35 @@ def _setup_discord() -> None:
     _register_discord_slash_command(application_id, bot_token)
 
 
-def _setup_telegram() -> None:
-    from integrations.telegram.verifier import verify_telegram
+def _run_spec_setup(spec: IntegrationSetupSpec) -> None:
+    """Prompt for a spec's fields, then validate, verify, and persist them.
 
-    bot_token = _p("Telegram bot token", secret=True)
-    if not bot_token:
-        _die("bot_token is required.")
-    default_chat_id = _p("Default chat ID (optional)")
-    print("\n  Validating Telegram bot token...")
-    result = verify_telegram("setup", {"bot_token": bot_token})
-    if result["status"] != "passed":
-        _die(result["detail"])
-    print(f"  {result['detail']}")
-    upsert_integration(
-        "telegram",
-        {
-            "credentials": {
-                "bot_token": bot_token,
-                "default_chat_id": default_chat_id or None,
-            }
-        },
-    )
+    Each field is checked as it is answered so a blank required value fails
+    immediately, rather than after the user has worked through the rest of the
+    prompts.
+    """
+    from integrations.setup_flow import apply_setup
+
+    values: dict[str, str | None] = {}
+    for field in spec.fields:
+        value = _p(field.question, secret=field.secret)
+        if not value and field.required:
+            _die(f"{field.label} is required.")
+        values[field.name] = value
+
+    print(f"\n  Validating {spec.service} credentials...")
+    outcome = apply_setup(spec, values)
+    if not outcome.ok:
+        _die(outcome.detail)
+    print(f"  {outcome.detail}")
     print("  Next:")
-    print("    - opensre integrations verify telegram")
+    print(f"    - opensre integrations verify {spec.service}")
+
+
+def _setup_telegram() -> None:
+    from integrations.telegram.setup import TELEGRAM_SETUP
+
+    _run_spec_setup(TELEGRAM_SETUP)
 
 
 def _setup_rocketchat() -> None:

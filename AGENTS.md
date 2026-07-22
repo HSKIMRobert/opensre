@@ -24,6 +24,19 @@
 - Do not keep compatibility-only forwarding modules after refactors. Once imports and tests
   are migrated, remove the old module path in the same change and use one canonical import path.
 
+### Docs under `docs/`
+
+`docs/` is user-facing. Test every sentence: *does this change what the reader
+does?* If not, cut it.
+
+- Cut vendor API endpoints (`getMe`), internal function names, which credential
+  tier a value lands in, and the bug a change fixed — that belongs in the PR
+  description or a module docstring.
+- Keep required vs optional, shortcuts that save real work, gotchas that are
+  invisible until they bite, and the exact commands and env vars they type.
+- Say "a chat the bot was never added to fails during setup", not "`getChat`
+  returns `ok: false`".
+
 ### Performance (algorithms & data structures)
 
 Apply on the **hot path** (per-request / per-iteration / per-tool-call); leave cold
